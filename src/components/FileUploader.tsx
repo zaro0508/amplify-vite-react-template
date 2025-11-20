@@ -9,10 +9,11 @@ import '@uppy/dashboard/css/style.min.css';
 
 interface FileUploaderProps {
   uploadEndpoint: string;
-  onUploadComplete?: (file: any, response: any) => void;
+  onUploadComplete?: (files: any[]) => void;
   onUploadError?: (file: any, error: any) => void;
   maxFileSize?: number; // in bytes
   allowedFileTypes?: string[];
+  maxNumberOfFiles?: number; // Allow multiple files
 }
 
 export default function FileUploader({
@@ -21,6 +22,7 @@ export default function FileUploader({
   onUploadError,
   maxFileSize = 10 * 1024 * 1024, // 10MB default
   allowedFileTypes,
+  maxNumberOfFiles = 10, // Default to 10 files
 }: FileUploaderProps) {
   const dashboardMounted = useRef(false);
   const listenersAdded = useRef(false);
@@ -28,7 +30,7 @@ export default function FileUploader({
   const [uppy] = useState(() =>
     new Uppy({
       restrictions: {
-        maxNumberOfFiles: 1,
+        maxNumberOfFiles: maxNumberOfFiles,
         maxFileSize: maxFileSize,
         allowedFileTypes: allowedFileTypes,
       },
@@ -49,21 +51,23 @@ export default function FileUploader({
           target: dashboardElement,
           proudlyDisplayPoweredByUppy: false,
           height: 350,
-          note: `Upload a single file (max ${(maxFileSize / 1024 / 1024).toFixed(0)}MB)`,
+          note: `Upload up to ${maxNumberOfFiles} file${maxNumberOfFiles > 1 ? 's' : ''} (max ${(maxFileSize / 1024 / 1024).toFixed(0)}MB each)`,
         });
         dashboardMounted.current = true;
       }
     }
-  }, [uppy, maxFileSize]);
+  }, [uppy, maxFileSize, maxNumberOfFiles]);
 
   // Set up event listeners only once
   useEffect(() => {
     if (listenersAdded.current) return;
 
+    const uploadedFiles: any[] = [];
+
     const handleUploadSuccess = (file: any, response: any) => {
       console.log('Upload successful:', file?.name);
-      if (onUploadComplete && file) {
-        onUploadComplete(file, response);
+      if (file) {
+        uploadedFiles.push({ file, response });
       }
     };
 
@@ -74,13 +78,24 @@ export default function FileUploader({
       }
     };
 
+    const handleComplete = (result: any) => {
+      console.log('All uploads complete:', result);
+      if (onUploadComplete && uploadedFiles.length > 0) {
+        onUploadComplete(uploadedFiles);
+      }
+      // Clear the array for next upload batch
+      uploadedFiles.length = 0;
+    };
+
     uppy.on('upload-success', handleUploadSuccess);
     uppy.on('upload-error', handleUploadError);
+    uppy.on('complete', handleComplete);
     listenersAdded.current = true;
 
     return () => {
       uppy.off('upload-success', handleUploadSuccess);
       uppy.off('upload-error', handleUploadError);
+      uppy.off('complete', handleComplete);
       uppy.cancelAll();
       listenersAdded.current = false;
     };

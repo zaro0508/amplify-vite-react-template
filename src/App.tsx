@@ -1,10 +1,10 @@
 import FileUploader from "./components/FileUploader";
 
 function App() {
-  const handleUploadComplete = (file: any, response: any) => {
-    console.log("File uploaded successfully:", file.name);
-    console.log("Server response:", response);
-    alert(`File "${file.name}" uploaded successfully!`);
+  const handleUploadComplete = (files: any[]) => {
+    console.log("Files uploaded successfully:", files);
+    const fileNames = files.map(f => f.file.name).join(', ');
+    alert(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully: ${fileNames}`);
   };
 
   const handleUploadError = (file: any, error: any) => {
@@ -21,6 +21,7 @@ function App() {
           onUploadComplete={handleUploadComplete}
           onUploadError={handleUploadError}
           maxFileSize={10 * 1024 * 1024}
+          maxNumberOfFiles={10}
           allowedFileTypes={['image/*', '.pdf', '.doc', '.docx']}
         />
       </div>
