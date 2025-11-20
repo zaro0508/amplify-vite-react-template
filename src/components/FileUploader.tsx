@@ -1,14 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import Uppy from '@uppy/core';
 import Dashboard from '@uppy/dashboard';
-import Tus from '@uppy/tus';
+import { uploadData } from 'aws-amplify/storage';
 
 // Import Uppy styles
 import '@uppy/core/css/style.min.css';
 import '@uppy/dashboard/css/style.min.css';
 
 interface FileUploaderProps {
-  uploadEndpoint: string;
   onUploadComplete?: (files: any[]) => void;
   onUploadError?: (file: any, error: any) => void;
   maxFileSize?: number; // in bytes
@@ -17,7 +16,6 @@ interface FileUploaderProps {
 }
 
 export default function FileUploader({
-  uploadEndpoint,
   onUploadComplete,
   onUploadError,
   maxFileSize = 10 * 1024 * 1024, // 10MB default
@@ -36,9 +34,6 @@ export default function FileUploader({
       },
       autoProceed: false,
     })
-      .use(Tus, {
-        endpoint: uploadEndpoint,
-      })
   );
 
   // Mount dashboard only once
@@ -87,15 +82,41 @@ export default function FileUploader({
       uploadedFiles.length = 0;
     };
 
-    uppy.on('upload-success', handleUploadSuccess);
+    // Custom upload handler for AWS Amplify Storage
+    const handleUpload = async () => {
+      const files = uppy.getFiles();
+      
+      for (const file of files) {
+        try {
+          const result = await uploadData({
+            path: `uploads/${file.name}`,
+            data: file.data as File,
+          }).result;
+          
+          handleUploadSuccess(file, { 
+            status: 200, 
+            body: { path: result.path },
+            uploadURL: result.path 
+          });
+        } catch (error: any) {
+          handleUploadError(file, {
+            name: 'UploadError',
+            message: error?.message || 'Upload failed',
+            details: error?.toString()
+          });
+        }
+      }
+      
+      handleComplete({ successful: uploadedFiles, failed: [] });
+    };
+
+    uppy.on('upload', handleUpload);
     uppy.on('upload-error', handleUploadError);
-    uppy.on('complete', handleComplete);
     listenersAdded.current = true;
 
     return () => {
-      uppy.off('upload-success', handleUploadSuccess);
+      uppy.off('upload', handleUpload);
       uppy.off('upload-error', handleUploadError);
-      uppy.off('complete', handleComplete);
       uppy.cancelAll();
       listenersAdded.current = false;
     };

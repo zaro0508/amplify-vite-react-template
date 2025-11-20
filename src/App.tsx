@@ -17,7 +17,6 @@ function App() {
       <div style={{ marginTop: '2rem' }}>
         <h2>File Upload</h2>
         <FileUploader
-          uploadEndpoint="https://tusd.tusdemo.net/files/"
           onUploadComplete={handleUploadComplete}
           onUploadError={handleUploadError}
           maxFileSize={10 * 1024 * 1024}
