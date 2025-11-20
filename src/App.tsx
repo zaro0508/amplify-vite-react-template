@@ -1,37 +1,28 @@
-import { useEffect, useState } from "react";
-import type { Schema } from "../amplify/data/resource";
-import { generateClient } from "aws-amplify/data";
-
-const client = generateClient<Schema>();
+import FileUploader from "./components/FileUploader";
 
 function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const handleUploadComplete = (file: any, response: any) => {
+    console.log("File uploaded successfully:", file.name);
+    console.log("Server response:", response);
+    alert(`File "${file.name}" uploaded successfully!`);
+  };
 
-  useEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
-  }, []);
-
-  function createTodo() {
-    client.models.Todo.create({ content: window.prompt("Todo content") });
-  }
+  const handleUploadError = (file: any, error: any) => {
+    console.error("Upload failed:", error);
+    alert(`Upload failed for "${file.name}": ${error.message || 'Unknown error'}`);
+  };
 
   return (
     <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
-      <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
-        ))}
-      </ul>
-      <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-          Review next step of this tutorial.
-        </a>
+      <div style={{ marginTop: '2rem' }}>
+        <h2>File Upload</h2>
+        <FileUploader
+          uploadEndpoint="https://tusd.tusdemo.net/files/"
+          onUploadComplete={handleUploadComplete}
+          onUploadError={handleUploadError}
+          maxFileSize={10 * 1024 * 1024}
+          allowedFileTypes={['image/*', '.pdf', '.doc', '.docx']}
+        />
       </div>
     </main>
   );
